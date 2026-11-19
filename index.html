@@ -193,6 +193,12 @@ mark{background:linear-gradient(transparent 55%, var(--marker) 55%); color:inher
 footer{padding:40px 0 56px; color:var(--ink-soft); font-size:.95rem}
 footer .brand{font-size:1.2rem; color:var(--ink)}
 [hidden]{display:none !important}
+  .rec{border:1.5px solid var(--pen); border-radius:14px; padding:14px 16px; margin:4px 0 18px}
+.rec b{font-family:var(--serif)}
+.form h4{font-family:var(--serif); font-size:1.15rem; margin:10px 0 2px}
+.help-pick{display:flex; gap:10px; flex-wrap:wrap}
+.help-pick .pick{flex:1 1 140px}
+.err{padding:14px 16px; border-radius:12px; background:color-mix(in srgb, var(--rose) 18%, transparent); margin-top:12px}
 </style>
 </head>
 <body>
@@ -363,7 +369,7 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
 <section class="sec" id="price">
   <div class="wrap">
     <h2 class="measure">Обери формат</h2>
-    <p class="measure" style="margin-top:18px">Ціни орієнтовні, поки діє ранній доступ.</p>
+    <p class="measure" style="margin-top:18px">Ціни орієнтовні, поки діє ранній доступ. Обери тариф — і пройди короткий квіз: підкажемо, чи він тобі справді підходить.</p>
     <div class="plans">
       <div class="plan">
         <h3>Базовий</h3>
@@ -373,7 +379,7 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
           <li>Журнали за темами</li>
           <li>База знань у форматі Markdown</li>
         </ul>
-        <a class="btn" href="#order" data-plan="base">Обрати базовий</a>
+        <a class="btn" href="#quiz" data-plan="base">Обрати базовий</a>
       </div>
       <div class="plan featured">
         <h3>З простором «Разом»</h3>
@@ -383,44 +389,25 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
           <li>Простір «Разом» для двох</li>
           <li>Спільний календар для планів</li>
         </ul>
-        <a class="btn" href="#order" data-plan="shared">Обрати з «Разом»</a>
+        <a class="btn" href="#quiz" data-plan="shared">Обрати з «Разом»</a>
       </div>
     </div>
     <div class="custom">
       <h3>Індивідуальне налаштування</h3>
       <p>Підлаштуємо Continuum під твій процес: структуру, журнали, інтеграції. Вартість залежить від складності, тому узгоджуємо її після короткої розмови.</p>
-      <a class="btn ghost" href="#order" data-plan="custom" style="margin-top:14px">Обговорити</a>
+      <a class="btn ghost" href="#quiz" data-plan="custom" style="margin-top:14px">Обговорити</a>
     </div>
-  </div>
-</section>
-
-<section class="sec" id="order">
-  <div class="wrap">
-    <h2 class="measure">Оформити заявку</h2>
-    <p class="measure" style="margin-top:18px">Обери тариф і залиш контакт. Ми напишемо, щоб узгодити деталі.</p>
-    <form class="form" id="orderForm" novalidate style="max-width:560px; margin-top:26px">
-      <div class="plan-pick" role="radiogroup" aria-label="Тариф">
-        <label class="pick"><input type="radio" name="plan" value="base"><span>Базовий, 20 €</span></label>
-        <label class="pick"><input type="radio" name="plan" value="shared"><span>З простором «Разом», 30 €</span></label>
-        <label class="pick"><input type="radio" name="plan" value="custom"><span>Індивідуальне налаштування</span></label>
-      </div>
-      <label for="orderContact">Telegram або Instagram</label>
-      <input id="orderContact" type="text" placeholder="@username" autocomplete="off" autocapitalize="none">
-      <div class="row"><button class="btn" type="submit" id="orderSend">Надіслати заявку</button></div>
-      <div id="orderMsg" role="status"></div>
-    </form>
   </div>
 </section>
 
 <section class="sec" id="quiz">
   <div class="wrap">
     <h2 style="text-align:center">Обери свій сценарій</h2>
-    <p style="text-align:center" class="fine">П’ять коротких запитань. Нічого не потрібно встановлювати.</p>
+    <p style="text-align:center" class="fine">П’ять коротких запитань, потім рекомендація і заявка. Нічого не потрібно встановлювати.</p>
     <div class="quiz-box" id="quizBox" aria-live="polite"></div>
   </div>
 </section>
 </main>
-
 <footer>
   <div class="wrap">
     <span class="brand">Continuum</span>
@@ -430,8 +417,15 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
 
 <script>
 (function(){
-  // Вебхук n8n. Після тесту замініть на production-URL (без /webhook-test/).
+  // Вебхук n8n. Після тесту заміни на production-URL (без /webhook-test/).
   var WEBHOOK_URL = "https://danit-n8n.duckdns.org/webhook-test/c2fcf000-9b5b-463e-b397-5f728bcbce82";
+
+  var PLANS = {
+    base:   { label: "Базовий", price: "20 €" },
+    shared: { label: "З простором «Разом»", price: "30 €" },
+    custom: { label: "Індивідуальне налаштування", price: "за домовленістю" }
+  };
+  var HELP = { yes: "Так, потрібна", no: "Ні, розберуся сам", maybe: "Поки не знаю" };
 
   var questions = [
     { q: "Де зараз живуть твої нотатки?", o: ["У кількох місцях, і я все втрачаю", "В одному застосунку, але без порядку", "На папері", "У голові"] },
@@ -442,22 +436,16 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
   ];
 
   var results = {
-    solo: {
-      title: "Особистий щоденник і база знань",
-      list: ["Один екран на день і журнали за темами, які збираються самі", "Свої розділи під твоє життя", "Мотивація: твої принципи завжди на виду"]
-    },
-    work: {
-      title: "База знань для роботи і щоденник",
-      list: ["Свої папки під проєкти, навчання і важливі нотатки", "Щоденник, щоб розвантажувати голову після робочого дня", "Файли Markdown залишаються у тебе"]
-    },
-    duo: {
-      title: "Щоденник і простір «Разом»",
-      list: ["Особистий щоденник і база знань для себе", "«Разом»: позиції публікуються незалежно, тему закриваєте удвох", "Спільний календар для планів на двох, усе шифрується на пристрої"]
-    }
+    solo: { key: "solo", plan: "base", title: "Особистий щоденник і база знань",
+      list: ["Один екран на день і журнали за темами, які збираються самі", "Свої розділи під твоє життя", "Мотивація: твої принципи завжди на виду"] },
+    work: { key: "work", plan: "base", title: "База знань для роботи і щоденник",
+      list: ["Свої папки під проєкти, навчання і важливі нотатки", "Щоденник, щоб розвантажувати голову після робочого дня", "Файли Markdown залишаються у тебе"] },
+    duo:  { key: "duo", plan: "shared", title: "Щоденник і простір «Разом»",
+      list: ["Особистий щоденник і база знань для себе", "«Разом»: позиції публікуються незалежно, тему закриваєте удвох", "Спільний календар для планів на двох, усе шифрується на пристрої"] }
   };
 
   var box = document.getElementById("quizBox");
-  var step = 0, answers = [];
+  var step = 0, answers = [], preferredPlan = null, current = null;
 
   function el(tag, cls, text){
     var n = document.createElement(tag);
@@ -465,154 +453,190 @@ footer .brand{font-size:1.2rem; color:var(--ink)}
     if (text != null) n.textContent = text;
     return n;
   }
+  function planText(k){ return PLANS[k].label + ", " + PLANS[k].price; }
+  function progress(pct){
+    var p = el("div", "prog"), b = el("i"); p.appendChild(b); box.appendChild(p);
+    requestAnimationFrame(function(){ b.style.width = pct + "%"; });
+  }
+  function pick(name, value, text, checked){
+    var l = el("label", "pick"), i = el("input");
+    i.type = "radio"; i.name = name; i.value = value; i.checked = !!checked;
+    l.appendChild(i); l.appendChild(el("span", null, text));
+    return l;
+  }
+  function field(form, id, label, type, ph, ac){
+    var l = el("label", null, label); l.setAttribute("for", id);
+    var i = el("input"); i.id = id; i.type = type; i.placeholder = ph; i.autocomplete = ac;
+    if (type !== "text" || id === "fContact") i.setAttribute("autocapitalize", "none");
+    form.appendChild(l); form.appendChild(i);
+    return i;
+  }
+
+  document.querySelectorAll("a[data-plan]").forEach(function(a){
+    a.addEventListener("click", function(){
+      preferredPlan = a.getAttribute("data-plan");
+      var r = box.querySelector('input[name="plan"][value="' + preferredPlan + '"]');
+      if (r) r.checked = true;
+    });
+  });
 
   function renderQuestion(){
+    current = null;
     box.textContent = "";
-    var prog = el("div", "prog"); var bar = el("i"); prog.appendChild(bar); box.appendChild(prog);
+    progress(step / questions.length * 100);
     box.appendChild(el("div", "fine", "Питання " + (step + 1) + " з " + questions.length));
     var item = questions[step];
-    var h = el("h3", "qtext", item.q); h.setAttribute("tabindex", "-1"); box.appendChild(h);
+    box.appendChild(el("h3", "qtext", item.q));
     var opts = el("div", "opts");
     item.o.forEach(function(label, i){
-      var b = el("button", "opt", label); b.type = "button";
+      var b = el("button", "opt" + (answers[step] === i ? " on" : ""), label); b.type = "button";
       b.addEventListener("click", function(){
         b.classList.add("on");
         answers[step] = i;
         setTimeout(function(){
           if (step < questions.length - 1){ step++; renderQuestion(); }
-          else { renderResult(); }
+          else { renderForm(pickResult()); }
         }, 180);
       });
       opts.appendChild(b);
     });
     box.appendChild(opts);
+    var nav = el("div", "row");
     if (step > 0){
       var back = el("button", "linkbtn", "Назад"); back.type = "button";
       back.addEventListener("click", function(){ step--; renderQuestion(); });
-      box.appendChild(back);
+      nav.appendChild(back);
     }
-    requestAnimationFrame(function(){ bar.style.width = ((step) / questions.length * 100) + "%"; });
+    var skip = el("button", "linkbtn", "Пропустити квіз і одразу залишити заявку"); skip.type = "button";
+    skip.addEventListener("click", function(){ renderForm(null); });
+    nav.appendChild(skip);
+    box.appendChild(nav);
   }
 
   function pickResult(){
-    var partner = answers[3] === 0 || answers[2] === 2;
-    var work = answers[2] === 1 || answers[1] === 0;
-    if (partner) return results.duo;
-    if (work) return results.work;
+    if (answers[3] === 0 || answers[2] === 2) return results.duo;
+    if (answers[2] === 1 || answers[1] === 0) return results.work;
     return results.solo;
   }
 
-  function renderResult(){
-    var r = pickResult();
+  function renderForm(r){
+    current = r;
     box.textContent = "";
-    var prog = el("div", "prog"); var bar = el("i"); bar.style.width = "100%"; prog.appendChild(bar); box.appendChild(prog);
+    progress(100);
     var wrap = el("div", "result");
-    wrap.appendChild(el("div", "hand", "Твій сценарій"));
-    var h = el("h3", null, r.title); h.setAttribute("tabindex", "-1"); wrap.appendChild(h);
-    var ul = el("ul"); r.list.forEach(function(t){ ul.appendChild(el("li", null, t)); }); wrap.appendChild(ul);
-    if (answers[4] !== 0){
-      wrap.appendChild(el("p", "fine", "Obsidian не знайомий? Це нормально: залиш контакт, і ми підкажемо, з чого почати."));
+
+    if (r){
+      wrap.appendChild(el("div", "hand", "Твій сценарій"));
+      wrap.appendChild(el("h3", null, r.title));
+      var ul = el("ul"); r.list.forEach(function(t){ ul.appendChild(el("li", null, t)); }); wrap.appendChild(ul);
+      var rec = el("div", "rec");
+      rec.appendChild(document.createTextNode("Рекомендуємо: "));
+      rec.appendChild(el("b", null, planText(r.plan)));
+      wrap.appendChild(rec);
+      if (preferredPlan && preferredPlan !== r.plan && preferredPlan !== "custom"){
+        wrap.appendChild(el("p", "fine", "Ти обирав «" + PLANS[preferredPlan].label + "» — його теж можна залишити, вибір за тобою."));
+      }
+      if (answers[4] !== 0){
+        wrap.appendChild(el("p", "fine", "Obsidian не знайомий? Це нормально: відміть, що потрібна допомога з налаштуванням."));
+      }
+    } else {
+      wrap.appendChild(el("div", "hand", "Заявка"));
+      wrap.appendChild(el("h3", null, "Обери тариф і залиш контакти"));
     }
 
     var form = el("form", "form"); form.noValidate = true;
-    var lab = el("label", null, "Залиш Telegram або Instagram, і ми напишемо, коли відкриємо доступ"); lab.setAttribute("for", "contact");
-    var inp = el("input"); inp.id = "contact"; inp.type = "text"; inp.placeholder = "@username"; inp.autocomplete = "off"; inp.setAttribute("autocapitalize", "none");
+    form.appendChild(el("h4", null, "Тариф"));
+    var pp = el("div", "plan-pick"); pp.setAttribute("role", "radiogroup");
+    var chosen = preferredPlan || (r ? r.plan : null);
+    Object.keys(PLANS).forEach(function(k){
+      pp.appendChild(pick("plan", k, planText(k) + (r && k === r.plan ? " — рекомендовано" : ""), k === chosen));
+    });
+    form.appendChild(pp);
+
+    form.appendChild(el("h4", null, "Контакти"));
+    var fName = field(form, "fName", "Ім’я", "text", "Як до тебе звертатися", "given-name");
+    var fEmail = field(form, "fEmail", "Email", "email", "name@example.com", "email");
+    var fContact = field(form, "fContact", "Телефон, Telegram або Instagram", "text", "+380… або @username", "off");
+
+    form.appendChild(el("h4", null, "Потрібна допомога з налаштуванням?"));
+    var hp = el("div", "help-pick"); hp.setAttribute("role", "radiogroup");
+    Object.keys(HELP).forEach(function(k){ hp.appendChild(pick("help", k, HELP[k], k === "maybe")); });
+    form.appendChild(hp);
+
     var row = el("div", "row");
-    var send = el("button", "btn", "Залишити контакт"); send.type = "submit";
-    row.appendChild(send);
-    form.appendChild(lab); form.appendChild(inp); form.appendChild(row);
-    var msg = el("div"); msg.setAttribute("role", "status");
-    form.appendChild(msg);
+    var send = el("button", "btn", "Надіслати заявку"); send.type = "submit";
+    row.appendChild(send); form.appendChild(row);
+    var msg = el("div"); msg.setAttribute("role", "status"); form.appendChild(msg);
+
     form.addEventListener("submit", function(e){
       e.preventDefault();
-      var v = inp.value.trim();
       msg.className = ""; msg.textContent = "";
-      if (!v){ msg.className = "thanks"; msg.textContent = "Впиши Telegram або Instagram, щоб ми знали, куди написати."; inp.focus(); return; }
-      send.disabled = true;
-      var prevText = send.textContent;
-      send.textContent = "Надсилаємо…";
+      var plan = form.querySelector('input[name="plan"]:checked');
+      var help = form.querySelector('input[name="help"]:checked');
+      var name = fName.value.trim(), email = fEmail.value.trim(), contact = fContact.value.trim();
+      function fail(t, f){ msg.className = "err"; msg.textContent = t; if (f) f.focus(); }
+      if (!plan) return fail("Обери тариф.");
+      if (name.length < 2) return fail("Впиши своє ім’я.", fName);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Перевір email — схоже, в ньому помилка.", fEmail);
+      if (contact.length < 3) return fail("Залиш телефон, Telegram або Instagram, щоб ми могли зв’язатися.", fContact);
+
       var payload = {
-        contact: v,
-        scenario: r.title,
-        suggestedPlan: r === results.duo ? "З простором «Разом», 30 €" : "Базовий, 20 €",
-        answers: answers.map(function(i, k){ return questions[k].o[i] || null; }),
         source: "continuum-landing",
+        name: name,
+        email: email,
+        contact: contact,
+        plan: plan.value,
+        planLabel: PLANS[plan.value].label,
+        planPrice: PLANS[plan.value].price,
+        recommendedPlan: r ? r.plan : null,
+        followedRecommendation: r ? plan.value === r.plan : null,
+        needsHelp: help ? help.value : "maybe",
+        needsHelpLabel: help ? HELP[help.value] : HELP.maybe,
+        quizCompleted: !!r,
+        scenario: r ? r.key : null,
+        scenarioTitle: r ? r.title : null,
+        answers: r ? answers.map(function(i, k){ return { question: questions[k].q, answer: questions[k].o[i] }; }) : [],
         submittedAt: new Date().toISOString()
       };
+
+      send.disabled = true;
+      var prev = send.textContent;
+      send.textContent = "Надсилаємо…";
       fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       }).then(function(res){
         if (!res.ok) throw new Error("HTTP " + res.status);
-        msg.className = "thanks";
-        msg.textContent = "Готово, контакт прийнято. Напишемо, коли відкриємо ранній доступ.";
+        renderThanks(name, plan.value);
       }).catch(function(){
-        msg.className = "thanks";
-        msg.textContent = "Не вдалося надіслати. Спробуй ще раз за хвилину.";
+        fail("Не вдалося надіслати. Спробуй ще раз за хвилину.");
         send.disabled = false;
-        send.textContent = prevText;
+        send.textContent = prev;
       });
     });
     wrap.appendChild(form);
 
-    var again = el("button", "linkbtn", "Пройти знову"); again.type = "button";
+    var again = el("button", "linkbtn", "Пройти квіз знову"); again.type = "button";
     again.addEventListener("click", function(){ step = 0; answers = []; renderQuestion(); });
     wrap.appendChild(again);
     box.appendChild(wrap);
   }
 
+  function renderThanks(name, plan){
+    box.textContent = "";
+    progress(100);
+    var wrap = el("div", "result");
+    wrap.appendChild(el("div", "hand", "Готово"));
+    wrap.appendChild(el("h3", null, "Дякуємо, " + name + "!"));
+    wrap.appendChild(el("p", null, "Заявку на тариф «" + PLANS[plan].label + "» прийнято. Ми напишемо тобі, щоб узгодити деталі раннього доступу."));
+    var again = el("button", "linkbtn", "Пройти квіз знову"); again.type = "button";
+    again.addEventListener("click", function(){ step = 0; answers = []; preferredPlan = null; renderQuestion(); });
+    wrap.appendChild(again);
+    box.appendChild(wrap);
+  }
+
   renderQuestion();
-})();
-</script>
-<script>
-(function(){
-  var WEBHOOK_URL = "https://danit-n8n.duckdns.org/webhook-test/c2fcf000-9b5b-463e-b397-5f728bcbce82";
-  var labels = { base: "Базовий, 20 €", shared: "З простором «Разом», 30 €", custom: "Індивідуальне налаштування" };
-  var form = document.getElementById("orderForm");
-  var msg = document.getElementById("orderMsg");
-  var btn = document.getElementById("orderSend");
-
-  document.querySelectorAll("a[data-plan]").forEach(function(a){
-    a.addEventListener("click", function(){
-      var radio = form.querySelector('input[name="plan"][value="' + a.getAttribute("data-plan") + '"]');
-      if (radio) radio.checked = true;
-    });
-  });
-
-  form.addEventListener("submit", function(e){
-    e.preventDefault();
-    var plan = form.querySelector('input[name="plan"]:checked');
-    var contact = document.getElementById("orderContact").value.trim();
-    msg.className = ""; msg.textContent = "";
-    if (!plan){ msg.className = "thanks"; msg.textContent = "Обери тариф."; return; }
-    if (!contact){ msg.className = "thanks"; msg.textContent = "Впиши Telegram або Instagram, щоб ми знали, куди написати."; return; }
-    btn.disabled = true;
-    var prev = btn.textContent;
-    btn.textContent = "Надсилаємо…";
-    fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        source: "continuum-order-form",
-        plan: plan.value,
-        planLabel: labels[plan.value],
-        contact: contact,
-        submittedAt: new Date().toISOString()
-      })
-    }).then(function(res){
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      msg.className = "thanks";
-      msg.textContent = "Дякуємо, заявку прийнято. Напишемо, щоб узгодити деталі.";
-      form.reset();
-    }).catch(function(){
-      msg.className = "thanks";
-      msg.textContent = "Не вдалося надіслати. Спробуй ще раз за хвилину.";
-    }).finally(function(){
-      btn.disabled = false;
-      btn.textContent = prev;
-    });
-  });
 })();
 </script>
 </body>
